@@ -1,0 +1,6 @@
+#!name=Spotify Proto (Selective)
+#!desc=Selective Protobuf account attribute patch; Premium simulation enabled by default.
+[MITM]
+hostname = %APPEND% spclient.wg.spotify.com, *-spclient.spotify.com
+[Script]
+spotify-proto-selective = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/(bootstrap\/v1\/bootstrap|user-customization-service\/v1\/customize)(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-proto.js
