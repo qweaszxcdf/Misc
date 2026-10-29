@@ -1,0 +1,8 @@
+#!name=Spotify Playback Recovery (Diagnostic)
+#!desc=Recovery baseline without MITM, premium spoofing, GABO, or response modification.
+#!date=2026-10-29
+
+[Rule]
+DOMAIN,aet.spotify.com,REJECT
+DOMAIN,adeventtracker.spotify.com,REJECT
+DOMAIN,ads-fa.spotify.com,REJECT
