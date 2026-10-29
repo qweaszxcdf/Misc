@@ -1,5 +1,29 @@
 'use strict';
-const SETTINGS={simulatePremium:true,suppressAdFlags:true,verbose:false};
+const ARGUMENTS = Object.create(null);
+if (typeof $argument === 'string') {
+ for (const item of $argument.split(';')) {
+  const eq = item.indexOf('=');
+  if (eq > 0) ARGUMENTS[item.slice(0,eq).trim()] = item.slice(eq+1).trim();
+ }
+}
+const SETTINGS={
+ simulatePremium: ARGUMENTS.premium !== '0',
+ suppressAdFlags: ARGUMENTS.accountAds !== '0',
+ modifyRemoteAdFlags: ARGUMENTS.remoteAds !== '0'
+};
+const AD_SWITCHES = Object.freeze({
+ 'core-ads/music_adt_enabled': false,
+ 'core-ads/always_keep_preroll_slot_filled': false,
+ 'core-ads/enable_state_fetch_system': false,
+ 'core-ads/mark_last_ad_break_time_for_preroll': false,
+ 'core-ads/enable_ad_request_metrics': false,
+ 'core-podcast-ads/podcast_adt_enabled': false,
+ 'core-podcast-ads/fetch_cold_start_preroll_ad': false,
+ 'core-podcast-ads/send_ad_opportunity_event': false,
+ 'core-podcast-ads-feature/enable_podcast_inter_episode_cold_start_preroll': false,
+ 'core-context-track-exts/enable_podcast_sponsored_content': false
+});
+
 (function(){
  try {
   if(!$request||!$response||$request.method!=='POST'||Number($response.status)!==200){$done({});return;}
@@ -14,10 +38,10 @@ const SETTINGS={simulatePremium:true,suppressAdFlags:true,verbose:false};
    for(const key of ['offline','on-demand','unrestricted','shuffle-eligible'])desired[key]={kind:'bool',value:true};
    desired['social-session-free-tier']={kind:'bool',value:false};
   }
-  if(!Object.keys(desired).length){$done({});return;}
-  const account=patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired);
+  if(!Object.keys(desired).length && !SETTINGS.modifyRemoteAdFlags){$done({});return;}
+  const account=Object.keys(desired).length ? patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired) : bytes;
   if(account===null) return $done({});
-  const result=patchConfiguration(account,bootstrap?[2,1,1,1,1,1]:[1,1,1]);
+  const result=SETTINGS.modifyRemoteAdFlags ? patchConfiguration(account,bootstrap?[2,1,1,1,1,1]:[1,1,1]) : account;
   $done(result===null?{}:{body:result});
  }catch(e){console.log('Spotify Proto passthrough: '+String(e).slice(0,120));$done({});}
 })();
@@ -79,18 +103,6 @@ function patchPath(src,path,desired){
 
 /* Only existing, explicitly named boolean advertising assignments are changed.
    All other remote configuration entries are retained byte-for-byte. */
-const AD_SWITCHES = Object.freeze({
- 'core-ads/music_adt_enabled': false,
- 'core-ads/always_keep_preroll_slot_filled': false,
- 'core-ads/enable_state_fetch_system': false,
- 'core-ads/mark_last_ad_break_time_for_preroll': false,
- 'core-ads/enable_ad_request_metrics': false,
- 'core-podcast-ads/podcast_adt_enabled': false,
- 'core-podcast-ads/fetch_cold_start_preroll_ad': false,
- 'core-podcast-ads/send_ad_opportunity_event': false,
- 'core-podcast-ads-feature/enable_podcast_inter_episode_cold_start_preroll': false,
- 'core-context-track-exts/enable_podcast_sponsored_content': false
-});
 function asciiField(data,id) {
  const field=fields(data).find(x=>x.id===id&&x.wire===2);
  if(!field) return null;
