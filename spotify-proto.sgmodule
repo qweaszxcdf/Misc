@@ -1,32 +1,38 @@
-#!name=Spotify Surge Proto (Optimized)
-#!desc=Playback compatibility: Premium account attributes on, risky remote core-ads overrides off; page filtering and GABO on.
-#!date=2026-10-29
+#!name=Spotify Compatibility - Upstream Pinned
+#!desc=Known-working upstream behavior pinned for diagnosing 10-second auto-skip; keep audio quality below Very High
+#!icon=https://img.icons8.com/?size=100&id=ZuQiaFCa1vXe&format=png&color=000000
+#!date=260426
+
 
 [Rule]
-AND,((DOMAIN-SUFFIX,spotify.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN-SUFFIX, spotify.com), (PROTOCOL, QUIC)),REJECT
 DOMAIN,aet.spotify.com,REJECT
-DOMAIN,adeventtracker.spotify.com,REJECT
-DOMAIN,ads-fa.spotify.com,REJECT
 
 [Header Rewrite]
-http-request ^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/user-customization-service\/v1\/customize(\?.*)?$ header-del if-none-match
+http-request ^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/user-customization-service\/v1\/customize$ header-del if-none-match
 
 [URL Rewrite]
-# Dismiss popup
-^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/pendragon(?:\/|\?|$) - reject
-# Hide premium/settings view (enabled by request; may affect plan information)
-^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/pam-view-service\/ - reject
-# Block AI DJ playlist URI (enabled by request; verify impact in app)
-^https:\/\/[^\s]*37i9dQZF1EYkqdzj48dyYq - reject
+
+#屏蔽弹窗广告
+^https:\/\/(spclient\.wg|.*-spclient)\.spotify\.com(:443)?\/pendragon - reject
+
+# 屏蔽设置界面会员信息（仅影响展示）
+^https:\/\/.*-spclient\.spotify\.com(:443)?\/pam-view-service\/ - reject
+
+# 屏蔽 AI DJ
+^https:\/\/.*37i9dQZF1EYkqdzj48dyYq - reject
 
 [MITM]
-hostname = %APPEND% spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = %APPEND% spclient.wg.spotify.com, *spclient.spotify.com
 
 [Script]
-spotify-gabo = type=http-request,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/gabo-receiver-service(?:\/|\?|$),requires-body=0,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-gabo.js
-spotify-proto-selective = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/(bootstrap\/v1\/bootstrap|user-customization-service\/v1\/customize)(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-proto.js,argument=premium=1;accountAds=1;remoteAds=0
+spotify-gabo = type=http-request,pattern=^https:\/\/(.*-spclient\.spotify\.com(:443)?|spclient\.wg\.spotify\.com)\/gabo-receiver-service,requires-body=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-gabo.js
+spotify-proto-ev3 = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/(bootstrap\/v1\/bootstrap|user-customization-service\/v1\/customize)$,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-proto-ev3.js,script-update-interval=0
 
-# Experimental page advertisement filtering (enabled by default)
-spotify-search-ads = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/browsita\/v[^/]+\/browse(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-page-ads.js
-spotify-home-ads = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/casita\/v[^/]+\/home\/default(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-page-ads.js
-spotify-scroll-ads = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/scrollsita\/v[^/]+\/scroll\/spotify(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-page-ads.js
+#去广告
+NoSearchAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/browsita\/v.\/browse,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-NoSearchAd.js
+NoHomeAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/casita\/v.\/home\/default,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-NoHomeAd.js
+NoScrollAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/scrollsita\/v.\/scroll\/spotify,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-NoScrollAd.js
+
+
+
