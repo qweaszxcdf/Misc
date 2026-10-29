@@ -1,5 +1,5 @@
-#!name=Spotify Compatibility - Upstream Pinned
-#!desc=Known-working upstream behavior pinned for diagnosing 10-second auto-skip; keep audio quality below Very High
+#!name=Spotify Original Proto + Optimized NoAd
+#!desc=Original pinned ev3 Protobuf; optimized Search/Home/Scroll NoAd filters. Experimental page-field removal.
 #!icon=https://img.icons8.com/?size=100&id=ZuQiaFCa1vXe&format=png&color=000000
 #!date=260426
 
@@ -30,9 +30,7 @@ spotify-gabo = type=http-request,pattern=^https:\/\/(.*-spclient\.spotify\.com(:
 spotify-proto-ev3 = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/(bootstrap\/v1\/bootstrap|user-customization-service\/v1\/customize)$,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-proto-ev3.js,script-update-interval=0
 
 #去广告
-NoSearchAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/browsita\/v.\/browse,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-NoSearchAd.js
-NoHomeAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/casita\/v.\/home\/default,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-NoHomeAd.js
-NoScrollAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|.*-spclient\.spotify\.com(:443)?)\/scrollsita\/v.\/scroll\/spotify,requires-body=1,binary-body-mode=1,max-size=0,script-path=https://raw.githubusercontent.com/Amlabort/MY_clash/f34e210c0cb092690296925ba08825dc6d2fb846/files/lpx/js/spot-NoScrollAd.js
-
-
-
+# Search/Home/Scroll optimized: delete complete protobuf fields; fail-open on malformed content
+NoSearchAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/browsita\/v[^/]+\/browse(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-page-ads.js
+NoHomeAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/casita\/v[^/]+\/home\/default(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-page-ads.js
+NoScrollAd = type=http-response,pattern=^https:\/\/(spclient\.wg\.spotify\.com|[A-Za-z0-9-]+-spclient\.spotify\.com)(:443)?\/scrollsita\/v[^/]+\/scroll\/spotify(\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/spotify-page-ads.js
