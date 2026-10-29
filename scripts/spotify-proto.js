@@ -15,7 +15,9 @@ const SETTINGS={simulatePremium:true,suppressAdFlags:true,verbose:false};
    desired['social-session-free-tier']={kind:'bool',value:false};
   }
   if(!Object.keys(desired).length){$done({});return;}
-  const result=patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired);
+  const account=patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired);
+  if(account===null) return $done({});
+  const result=patchConfiguration(account,bootstrap?[2,1,1,1,1,1]:[1,1,1]);
   $done(result===null?{}:{body:result});
  }catch(e){console.log('Spotify Proto passthrough: '+String(e).slice(0,120));$done({});}
 })();
@@ -73,4 +75,61 @@ function patchPath(src,path,desired){
  const f=fields(src),replacements=[];
  for(const x of f){if(x.id!==path[0]||x.wire!==2)continue;const patched=patchPath(src.subarray(x.ds,x.end),path.slice(1),desired);if(patched!==null)replacements.push([x.start,message(x.id,patched)]);}
  return replacements.length?splice(src,f,replacements):null;
+}
+
+/* Only existing, explicitly named boolean advertising assignments are changed.
+   All other remote configuration entries are retained byte-for-byte. */
+const AD_SWITCHES = Object.freeze({
+ 'core-ads/music_adt_enabled': false,
+ 'core-ads/always_keep_preroll_slot_filled': false,
+ 'core-ads/enable_state_fetch_system': false,
+ 'core-ads/mark_last_ad_break_time_for_preroll': false,
+ 'core-ads/enable_ad_request_metrics': false,
+ 'core-podcast-ads/podcast_adt_enabled': false,
+ 'core-podcast-ads/fetch_cold_start_preroll_ad': false,
+ 'core-podcast-ads/send_ad_opportunity_event': false,
+ 'core-podcast-ads-feature/enable_podcast_inter_episode_cold_start_preroll': false,
+ 'core-context-track-exts/enable_podcast_sponsored_content': false
+});
+function asciiField(data,id) {
+ const field=fields(data).find(x=>x.id===id&&x.wire===2);
+ if(!field) return null;
+ const b=data.subarray(field.ds,field.end);
+ if(b.some(x=>x>127)) return null;
+ return Array.from(b,x=>String.fromCharCode(x)).join('');
+}
+function patchAssignment(raw) {
+ const ff=fields(raw),id=ff.find(x=>x.id===1&&x.wire===2);
+ if(!id) return null;
+ const p=raw.subarray(id.ds,id.end);
+ const scope=asciiField(p,1),name=asciiField(p,2);
+ if(!scope||!name) return null;
+ const k=scope+'/'+name;
+ if(!Object.prototype.hasOwnProperty.call(AD_SWITCHES,k))return null;
+ const bool=ff.find(x=>x.id===3&&x.wire===2);
+ // Never convert a non-bool configuration; preserve all unknown fields.
+ if(!bool)return null;
+ const inner=raw.subarray(bool.ds,bool.end),iv=fields(inner);
+ const valueField=iv.filter(x=>x.id===1&&x.wire===0);
+ const replacement=cat([vi(8),vi(AD_SWITCHES[k]?1:0)]);
+ const edited=splice(inner,iv,valueField.map(x=>[x.start,null]),[replacement]);
+ return splice(raw,ff,[[bool.start,message(3,edited)]]);
+}
+function patchConfiguration(bytes,path) {
+ if(path.length) {
+  const ff=fields(bytes),rep=[];
+  for(const x of ff) {
+   if(x.id!==path[0]||x.wire!==2)continue;
+   const edited=patchConfiguration(bytes.subarray(x.ds,x.end),path.slice(1));
+   if(edited!==null)rep.push([x.start,message(x.id,edited)]);
+  }
+  return rep.length?splice(bytes,ff,rep):bytes;
+ }
+ const ff=fields(bytes),rep=[];
+ for(const x of ff) {
+  if(x.id!==3||x.wire!==2)continue;
+  const edited=patchAssignment(bytes.subarray(x.ds,x.end));
+  if(edited!==null)rep.push([x.start,message(3,edited)]);
+ }
+ return rep.length?splice(bytes,ff,rep):bytes;
 }
