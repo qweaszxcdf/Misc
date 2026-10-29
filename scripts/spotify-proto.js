@@ -9,7 +9,7 @@ if (typeof $argument === 'string') {
 const SETTINGS={
  simulatePremium: ARGUMENTS.premium !== '0',
  suppressAdFlags: ARGUMENTS.accountAds !== '0',
- modifyRemoteAdFlags: ARGUMENTS.remoteAds !== '0'
+ modifyRemoteAdFlags: ARGUMENTS.remoteAds === '1'
 };
 const AD_SWITCHES = Object.freeze({
  'core-ads/music_adt_enabled': false,
