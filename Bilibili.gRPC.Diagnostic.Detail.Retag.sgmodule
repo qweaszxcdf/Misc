@@ -1,0 +1,12 @@
+#!name=Bilibili gRPC Detail Same-Length Retag EXPERIMENT
+#!desc=Retag selected commercial protobuf fields without changing frame length; EXPERIMENTAL.
+#!homepage=https://github.com/qweaszxcdf/Misc
+
+# Test together with Fast; disable all other Bilibili gRPC diagnostic modules.
+# Never use the retag experiment as a daily module without checking actual client behavior.
+
+[Script]
+bilibili-grpc-detail-retag = type=http-response,pattern=^https:\/\/grpc\.biliapi\.net\/(?:bilibili\.app\.view\.v1\.View\/View|bilibili\.app\.viewunite\.v1\.View\/View)(?:\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/bilibili-grpc-rewrite-probe.js,argument=mode=retag
+
+[MITM]
+hostname = %APPEND% grpc.biliapi.net

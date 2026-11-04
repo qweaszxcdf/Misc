@@ -56,3 +56,27 @@ Keep **Fast** active and turn off all other gRPC test modules. For the endpoint 
 Surge documentation: https://manual.nssurge.com/scripting/http-response.html states that body scripts buffer the whole (decompressed) response, while header-only scripts run at response header arrival. If a second profile-level response script matches the same URL, only the first enabled script runs; verify execution in Surge's HTTP request details. These tests do **not** show live per-request timings by themselves, and the no-op script does not log URLs or sensitive contents.
 
 **Caution:** using `requires-body=1` on large or streaming gRPC payloads can cause a delay even when returning the body unchanged; do not keep diagnostic modules enabled for daily use.
+
+## Rewriting probe after Noop tests
+
+Observation supplied by the tester: MITM-only and both Noop modes load normally; real D/E protobuf edits delay descriptions/comments.
+
+This narrows the issue to returning a rewritten response or removing original protobuf fields, **not** to MITM and not to `requires-body=1` alone.
+
+Two probes are provided for each endpoint:
+
+| Endpoint | Identity rewrite (returns a copy of unchanged body) | Same-length retag (experimental) |
+|---|---|---|
+| Detail: View/View and ViewUnite/View | [Detail Identity](Bilibili.gRPC.Diagnostic.Detail.Identity.sgmodule) | [Detail Retag](Bilibili.gRPC.Diagnostic.Detail.Retag.sgmodule) |
+| Comments: Reply/MainList | [Comments Identity](Bilibili.gRPC.Diagnostic.Comments.Identity.sgmodule) | [Comments Retag](Bilibili.gRPC.Diagnostic.Comments.Retag.sgmodule) |
+
+**Do not enable both at once.** Retag rewrites the protobuf tag of known commercial fields, leaving their payload and entire gRPC body length unchanged, so the client treats them as unknown fields (assuming the new IDs are unused). It does **not** rewrite gRPC frame length or manually alter HTTP headers.
+
+- If **Identity delays**, even unchanged bytes returned through `$done({body})` can trigger the issue; do not proceed with Protobuf edits until the response replacement path is understood.
+- If **Identity is normal but Retag delays**, missing field semantics, missing advertising state, or client retries are suspected. Avoid removing these fields.
+- If **Identity and Retag are both normal but D/E delays**, a shorter rewritten gRPC message / changed framing is a plausible explanation (or original transform differs on real responses). Investigate HTTP response headers, trailers and client requests in Surge captures before adopting retag.
+- If **Retag is normal**, that does **not prove** advertisements are removed correctly. Check actual appearance and playback.
+
+Retag uses field IDs 190/191/192 in ViewReply, field 15 in ViewUniteReply, and field 15 in MainListReply. These IDs are presumed unused based on the old extracted schema; newer versions may define them. The script refuses to modify when those IDs already appear at the top level. Treat as **temporary research code**, not a production fix.
+
+Neither module records response contents or sensitive data. Use one profile-level HTTP response script per request; Surge only executes the first matching enabled script.
