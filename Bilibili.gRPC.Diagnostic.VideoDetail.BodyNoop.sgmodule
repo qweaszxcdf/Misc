@@ -1,0 +1,14 @@
+#!name=Bilibili gRPC VideoDetail - Body Buffer No-op
+#!desc=Latency isolation: same endpoint as VideoDetail rewrite; buffer full response, return unchanged.
+#!homepage=https://github.com/qweaszxcdf/Misc
+
+# Keep the existing Bilibili Helper (Fast) enabled.
+# Disable all other gRPC diagnostic and Full/Maasea modules.
+# Body No-op buffers the body but makes NO protobuf edits.
+# Headers No-op never requests a response body.
+
+[Script]
+bilibili-grpc-video-detail-buffer-noop = type=http-response,pattern=^https:\/\/grpc\.biliapi\.net\/(?:bilibili\.app\.view\.v1\.View\/View|bilibili\.app\.viewunite\.v1\.View\/View)(?:\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/bilibili-grpc-passthrough.js
+
+[MITM]
+hostname = %APPEND% grpc.biliapi.net

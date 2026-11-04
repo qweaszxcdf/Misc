@@ -25,3 +25,34 @@ Keep `Bilibili.Helper.Audited.sgmodule` (**Fast**) enabled as the stable baselin
 **Important:** This is a diagnosis, not a measured performance claim. Since the scripts may modify legitimate promotional data and use buffer size 1 MiB, unexpected responses pass through unchanged. These modules do not change request headers or add PCDN rules. Do not run more than one diagnostic module simultaneously. To preserve low latency in daily use, use Fast only.
 
 Relevant maintained files: [Fast](Bilibili.Helper.Audited.sgmodule), [Full Experimental](Bilibili.Helper.Full.Experimental.sgmodule), [gRPC script](scripts/bilibili-helper-grpc.js). No existing files are modified by these diagnostics.
+
+## D/E follow-up: distinguish script startup, body buffering and protobuf editing
+
+If **B (MITM-only) is normal**, but D or E causes loading delays, three mechanisms remain plausible: script startup/queueing, full-response buffering (`requires-body=1`), or actual protobuf rewriting.
+
+The following additional controls are **pass-through** (`$done({})`) and do not alter any response.
+
+| Endpoint | Headers-only no-op (`requires-body=0`) | Body-buffer no-op (`requires-body=1`) | Actual rewriting |
+|---|---|---|---|
+| Video detail / intro | [Detail Headers](Bilibili.gRPC.Diagnostic.VideoDetail.HeadersNoop.sgmodule) | [Detail Body](Bilibili.gRPC.Diagnostic.VideoDetail.BodyNoop.sgmodule) | [D: Detail Rewrite](Bilibili.gRPC.Diagnostic.VideoDetail.sgmodule) |
+| Comments | [Comments Headers](Bilibili.gRPC.Diagnostic.Comments.HeadersNoop.sgmodule) | [Comments Body](Bilibili.gRPC.Diagnostic.Comments.BodyNoop.sgmodule) | [E: Comments Rewrite](Bilibili.gRPC.Diagnostic.Comments.sgmodule) |
+
+### Suggested test sequence
+
+Keep **Fast** active and turn off all other gRPC test modules. For the endpoint where D or E causes delay:
+
+1. Confirm B (MITM-only) still loads normally.
+2. Test the corresponding **HeadersNoop** module.
+3. Test the corresponding **BodyNoop** module.
+4. Compare with D/E actual rewrite.
+
+| Observed result | Most likely source |
+|---|---|
+| HeadersNoop delayed, but MITM-only normal | Script scheduling / WebView engine startup or HTTP-response script path |
+| HeadersNoop normal, BodyNoop delayed | Buffering the complete gRPC response or transferring binary body to the script |
+| Both Noop modes normal, actual rewrite delayed | Protobuf code or rewritten-response handling |
+| All normal during retest | Intermittent network/app effects, cached sessions, or another module interaction |
+
+Surge documentation: https://manual.nssurge.com/scripting/http-response.html states that body scripts buffer the whole (decompressed) response, while header-only scripts run at response header arrival. If a second profile-level response script matches the same URL, only the first enabled script runs; verify execution in Surge's HTTP request details. These tests do **not** show live per-request timings by themselves, and the no-op script does not log URLs or sensitive contents.
+
+**Caution:** using `requires-body=1` on large or streaming gRPC payloads can cause a delay even when returning the body unchanged; do not keep diagnostic modules enabled for daily use.
