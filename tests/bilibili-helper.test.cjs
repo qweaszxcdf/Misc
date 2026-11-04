@@ -1,0 +1,18 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..'),json=fs.readFileSync(path.join(root,'scripts/bilibili-helper-json.js'),'utf8'),grpc=fs.readFileSync(path.join(root,'scripts/bilibili-helper-grpc.js'),'utf8');
+function run(code,url,body,status=200){let calls=[];vm.runInNewContext(code,{$request:{url},$response:{status,body},$done:x=>calls.push(x),console:{log(){}},Uint8Array});assert.equal(calls.length,1);return calls[0];}
+const jurl=p=>'https://app.bilibili.com/x/v2/'+p;
+test('JSON splash removes only ad arrays',()=>{const out=run(json,jurl('splash/list'),JSON.stringify({code:0,data:{list:[{id:1}],max_time:7,normal:8}}));assert.deepEqual(JSON.parse(out.body).data,{list:[],max_time:0,normal:8});});
+test('JSON brand preserves ordinary art',()=>{const out=run(json,jurl('splash/brand/list'),JSON.stringify({code:0,data:{list:[{id:1},{id:2,is_ad:1}]}}));assert.deepEqual(JSON.parse(out.body).data.list,[{id:1}]);});
+test('JSON search removes linktype ads',()=>{const out=run(json,jurl('search?key=x'),JSON.stringify({code:0,data:{item:[{linktype:'video'},{linktype:'video_ad'}]}}));assert.equal(JSON.parse(out.body).data.item.length,1);});
+test('JSON feed removes banner, keeps video',()=>{const out=run(json,jurl('feed/index'),JSON.stringify({code:0,data:{items:[{card_type:'banner'},{card_type:'small_cover'}]}}));assert.equal(JSON.parse(out.body).data.items.length,1);});
+test('JSON malformed and HTTP error pass through',()=>{assert.deepEqual(run(json,jurl('search'),'{bad'),{});assert.deepEqual(run(json,jurl('search'),'{"code":0}',500),{});});
+const vi=n=>{let a=[];do{let x=n%128;n=Math.floor(n/128);a.push(n?x|128:x);}while(n);return Uint8Array.from(a);},cat=(...x)=>{let b=new Uint8Array(x.reduce((n,y)=>n+y.length,0)),i=0;for(const v of x){b.set(v,i);i+=v.length;}return b;},s=x=>Uint8Array.from([...x].map(c=>c.charCodeAt(0))),f=(n,p)=>cat(vi(n*8+2),vi(p.length),p);
+const frame=(...fs)=>{let b=cat(...fs),a=new Uint8Array(b.length+5);a.set([0,(b.length>>>24)&255,(b.length>>>16)&255,(b.length>>>8)&255,b.length&255]);a.set(b,5);return a;};
+const gurl=p=>'https://grpc.biliapi.net/'+p;
+test('gRPC DmView drops interactive commands',()=>{const r=run(grpc,gurl('bilibili.community.service.dm.v1.DM/DmView'),frame(f(22,f(1,f(1,s('cmd')))),f(30,s('keep'))));const out=Buffer.from(r.body);assert.ok(out.includes(Buffer.from('keep')));assert.ok(!out.includes(Buffer.from('cmd')));});
+test('gRPC View strips CM but keeps unknown data',()=>{const r=run(grpc,gurl('bilibili.app.view.v1.View/View'),frame(f(30,s('ad')),f(31,s('cfg')),f(41,s('ipad')),f(90,s('keep'))));const out=Buffer.from(r.body);assert.ok(out.includes(Buffer.from('keep')));assert.ok(!out.includes(Buffer.from('ipad')));});
+test('gRPC search removes only ad linktype',()=>{const r=run(grpc,gurl('bilibili.polymer.app.search.v1.Search/SearchAll'),frame(f(4,f(4,s('x_ad'))),f(4,f(4,s('ordinary')))));const out=Buffer.from(r.body);assert.ok(out.includes(Buffer.from('ordinary')));assert.ok(!out.includes(Buffer.from('x_ad')));});
+test('gRPC dynamic removes enum 15 but not ordinary enum 2',()=>{const r=run(grpc,gurl('bilibili.app.dynamic.v2.Dynamic/DynAll'),frame(f(1,cat(f(1,cat(vi(8),vi(15),f(9,s('ad')))),f(1,cat(vi(8),vi(2),f(9,s('normal'))))))));const out=Buffer.from(r.body);assert.ok(out.includes(Buffer.from('normal')));assert.ok(!out.includes(Buffer.from('ad')));});
+test('gRPC unhandled and compressed frames pass through',()=>{const u=gurl('bilibili.app.view.v1.View/View');assert.deepEqual(run(grpc,u,Uint8Array.from([1,0,0,0,1,0])),{});assert.deepEqual(run(grpc,u,Uint8Array.from([0,0,0,0,50,0])),{});});

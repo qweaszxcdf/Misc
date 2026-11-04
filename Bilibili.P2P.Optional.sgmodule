@@ -1,0 +1,4 @@
+#!name=Bilibili PCDN Filter (Optional)
+#!desc=Optional rule-only PCDN hostname blocking. No ISP or playback network header spoofing.
+[Rule]
+DOMAIN-WILDCARD,*pcdn*.biliapi.net,REJECT
