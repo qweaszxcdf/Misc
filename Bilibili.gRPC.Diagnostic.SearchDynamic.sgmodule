@@ -1,0 +1,12 @@
+#!name=Bilibili gRPC Test C - Search and Dynamic
+#!desc=MITM + scripts on gRPC search/dynamic only; no view/detail/comment response scripts.
+#!homepage=https://github.com/qweaszxcdf/Misc
+
+# Diagnostic only. Use together with Bilibili Helper (Fast).
+# Enable ONE gRPC diagnostic module at a time.
+
+[Script]
+bilibili-grpc-search-dynamic = type=http-response,pattern=^https:\/\/grpc\.biliapi\.net\/(?:bilibili\.polymer\.app\.search\.v1\.Search\/SearchAll|bilibili\.app\.dynamic\.v2\.Dynamic\/DynAll)(?:\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/bilibili-helper-grpc.js
+
+[MITM]
+hostname = %APPEND% grpc.biliapi.net

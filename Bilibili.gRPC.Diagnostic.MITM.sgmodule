@@ -1,0 +1,9 @@
+#!name=Bilibili gRPC Test B - MITM Only
+#!desc=Enable grpc.biliapi.net HTTPS MITM; no scripts and no response-body buffering.
+#!homepage=https://github.com/qweaszxcdf/Misc
+
+# Diagnostic only. Use together with Bilibili Helper (Fast).
+# Enable ONE gRPC diagnostic module at a time.
+
+[MITM]
+hostname = %APPEND% grpc.biliapi.net
