@@ -111,3 +111,21 @@ The official Surge documentation distinguishes untouched `$done({})` from body r
 Keep `Bilibili.Helper.Audited.sgmodule` (**Fast**) enabled for splash, search and feed ad filtering. Do **not** enable the Full Experimental module, original Maasea gRPC module, or any gRPC response-modifying diagnostics during normal use if the latency is unacceptable. Header-only script changes cannot remove an ad embedded in the gRPC response; use other supported non-gRPC endpoints only where independently verified. No gRPC in-place edit can be claimed to be delay-free until tested on device.
 
 The diagnostic scripts are not performance benchmarks and have no instrumentation of server/client timing. Confirm the script actually ran in Surge's request detail. Test each module alone and restore Fast-only afterward.
+
+## Confirmed SameReference result (2026-11-04)
+
+**User-observed results on iPhone / Surge:**
+
+| Configuration | Description and comment loading |
+|---|---|
+| Fast (no gRPC MITM) | Normal |
+| MITM-only | Normal |
+| HeadersNoop: `requires-body=0`, `$done({})` | Normal |
+| BodyNoop: `requires-body=1`, `$done({})` | Normal |
+| Identity: `$done({body:new Uint8Array($response.body)})` | Delayed |
+| SameReference: `$done({body:$response.body})` | Delayed |
+| Full protobuf D/E response edits | Delayed |
+
+**Conclusion:** Returning an explicit body replacement on these gRPC responses is the common factor. This rules out a necessary contribution from JS buffer copying, protobuf parsing or field deletion, and rules out MITM and full-body buffering *alone*. Surge's internal reason is unverified; do not claim a confirmed upstream bug.
+
+**Stop testing these endpoints for daily filtering.** The Fast module is the practical solution. Retag/body rewrite is not an established workaround. See [minimal reproduction and report notes](Bilibili.gRPC.Surge.Repro.md).

@@ -57,3 +57,7 @@ The default `Bilibili.Helper.Audited.sgmodule` is now **Fast**:
 Full gRPC functionality remains available in `Bilibili.Helper.Full.Experimental.sgmodule` but may incur latency. PCDN hostname rejection is separately available in `Bilibili.P2P.Optional.sgmodule`.
 
 Only enable **one** of Fast / Full / Splash. If comments are still slow with Fast, confirm the old module is disabled and check other modules/profile-level `[MITM]` entries for `grpc.biliapi.net` and whether your proxy routes Bilibili traffic differently. Surge's response-body buffering is documented: https://manual.nssurge.com/scripting/http-response.html
+
+## Final gRPC latency isolation (2026-11-04)
+
+After MITM-only, no-op, identity, and SameReference tests, the user confirmed that **even returning the original binary body reference** with `$done({body:$response.body})` delays descriptions/comments. No-op `$done({})` does not. Thus the observed issue is associated with HTTP-response body replacement rather than gRPC MITM or full body buffering alone. Internal root cause is not confirmed. **Keep Fast for daily use.** See the [diagnostic summary](Bilibili.gRPC.Diagnostic.README.md) and [Surge reproduction](Bilibili.gRPC.Surge.Repro.md).
