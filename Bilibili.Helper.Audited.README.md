@@ -6,11 +6,12 @@ Source reviewed: https://github.com/Maasea/sgmodule/blob/master/Bilibili.Helper.
 
 ## Modules
 
-- Full set: `https://raw.githubusercontent.com/qweaszxcdf/Misc/main/Bilibili.Helper.Audited.sgmodule`
+- Fast default: `https://raw.githubusercontent.com/qweaszxcdf/Misc/main/Bilibili.Helper.Audited.sgmodule`
+- Full experimental: `https://raw.githubusercontent.com/qweaszxcdf/Misc/main/Bilibili.Helper.Full.Experimental.sgmodule`
 - Splash only: `https://raw.githubusercontent.com/qweaszxcdf/Misc/main/Bilibili.Splash.Audited.sgmodule`
 - PCDN domain blocking only: `https://raw.githubusercontent.com/qweaszxcdf/Misc/main/Bilibili.P2P.Optional.sgmodule`
 
-Install **only one** of the full or splash-only modules. The full module already includes the PCDN domain rule; do not install the optional PCDN rule on top of it.
+Install **only one** of Fast, Full, or Splash. The Full module already includes the PCDN domain rule. Fast does not include PCDN blocking.
 
 ## Features
 
@@ -40,3 +41,19 @@ The module requires Surge MITM with HTTP/2 inspection enabled and the user's MIT
 The field IDs were extracted from Maasea's bundled schema and may change with Bilibili app versions; automatic removal is not guaranteed. Video details and related-recommendation filtering may also remove non-ad promotional UI. This is locally fixture-tested, **not verified on an iPhone**. For regressions, turn off the full module and try splash-only; then isolate individual gRPC paths. Avoid enabling another Bilibili rewrite module at the same time.
 
 Test with `node --test tests/bilibili-helper.test.cjs`.
+
+## 2026-11-04: Delayed video descriptions and comments
+
+Observed on device: both the upstream Maasea module and the former full audited module delayed video descriptions and comment loading.
+
+**Suspected mechanism:** `grpc.biliapi.net` MITM plus `requires-body=1` on `View/View`, `ViewUnite/View`, and `Reply/MainList`. Surge must buffer entire responses before scripts run. This is a hypothesis until measured with Surge request timing.
+
+The default `Bilibili.Helper.Audited.sgmodule` is now **Fast**:
+- Retains splash, search, feed JSON filtering on `app.bilibili.com`.
+- **No** `grpc.biliapi.net` in MITM; no gRPC scripts.
+- **No** PCDN domain rejection by default, to avoid altering other network paths during isolation.
+- Loses gRPC-only processing of comment ads, detail ads, interactive danmaku, teen popup, gRPC search ads and dynamic ads.
+
+Full gRPC functionality remains available in `Bilibili.Helper.Full.Experimental.sgmodule` but may incur latency. PCDN hostname rejection is separately available in `Bilibili.P2P.Optional.sgmodule`.
+
+Only enable **one** of Fast / Full / Splash. If comments are still slow with Fast, confirm the old module is disabled and check other modules/profile-level `[MITM]` entries for `grpc.biliapi.net` and whether your proxy routes Bilibili traffic differently. Surge's response-body buffering is documented: https://manual.nssurge.com/scripting/http-response.html
