@@ -46,7 +46,7 @@ Test with `node --test tests/bilibili-helper.test.cjs`.
 
 Observed on device: both the upstream Maasea module and the former full audited module delayed video descriptions and comment loading.
 
-**Suspected mechanism:** `grpc.biliapi.net` MITM plus `requires-body=1` on `View/View`, `ViewUnite/View`, and `Reply/MainList`. Surge must buffer entire responses before scripts run. This is a hypothesis until measured with Surge request timing.
+**Updated from controlled on-device tests:** MITM-only and `requires-body=1` with `$done({})` both load normally, while returning a cloned-but-byte-identical `$done({body})` causes delay. The observed issue is associated with **Surge response-body replacement**, not merely HTTPS MITM or body buffering. The internal cause has not been independently verified. See [gRPC diagnostics](Bilibili.gRPC.Diagnostic.README.md).
 
 The default `Bilibili.Helper.Audited.sgmodule` is now **Fast**:
 - Retains splash, search, feed JSON filtering on `app.bilibili.com`.

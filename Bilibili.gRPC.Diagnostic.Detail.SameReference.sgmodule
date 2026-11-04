@@ -1,0 +1,12 @@
+#!name=Bilibili gRPC Detail SameReference
+#!desc=Diagnostic only: return the exact response Uint8Array object, no copying or parsing.
+#!homepage=https://github.com/qweaszxcdf/Misc
+
+# Pair with Bilibili Helper (Fast). Disable all other Bilibili gRPC diagnostics.
+# SameReference does not modify payload bytes, but it invokes Surge response replacement.
+
+[Script]
+bilibili-grpc-detail-sameref = type=http-response,pattern=^https:\/\/grpc\.biliapi\.net\/(?:bilibili\.app\.view\.v1\.View\/View|bilibili\.app\.viewunite\.v1\.View\/View)(?:\?.*)?$,requires-body=1,binary-body-mode=1,max-size=1048576,script-path=https://raw.githubusercontent.com/qweaszxcdf/Misc/main/scripts/bilibili-grpc-sameref.js
+
+[MITM]
+hostname = %APPEND% grpc.biliapi.net

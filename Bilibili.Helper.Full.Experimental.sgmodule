@@ -1,5 +1,5 @@
 #!name=Bilibili Helper (Full Experimental)
-#!desc=Full gRPC content filtering; may delay video descriptions and comments. Use Fast version if latency occurs.
+#!desc=EXPERIMENTAL: gRPC response-body rewriting has caused confirmed description/comment latency. Use Fast for daily browsing.
 #!homepage=https://github.com/qweaszxcdf/Misc
 
 [Rule]

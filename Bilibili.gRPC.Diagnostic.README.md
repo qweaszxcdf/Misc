@@ -80,3 +80,34 @@ Two probes are provided for each endpoint:
 Retag uses field IDs 190/191/192 in ViewReply, field 15 in ViewUniteReply, and field 15 in MainListReply. These IDs are presumed unused based on the old extracted schema; newer versions may define them. The script refuses to modify when those IDs already appear at the top level. Treat as **temporary research code**, not a production fix.
 
 Neither module records response contents or sensitive data. Use one profile-level HTTP response script per request; Surge only executes the first matching enabled script.
+
+## Confirmed user observation: identity body replacement also delays (2026-11-04)
+
+On the user's iPhone/Surge configuration:
+- MITM-only is normal.
+- Header-no-op (`requires-body=0`, `$done({})`) is normal.
+- Body-no-op (`requires-body=1`, `$done({})`) is normal.
+- Identity rewrite (`$done({body: new Uint8Array($response.body)})`) **delays video descriptions or comments**, despite identical bytes.
+- Actual field deletion D/E also delays.
+
+**Interpretation:** The observed slowdown correlates with returning a `body` replacement to Surge, not with Protobuf parsing, invalid gRPC frame length, or field deletion. This does not prove an internal Surge bug; the internal reason remains unverified.
+
+### Last isolation test: return original body reference directly
+
+| Endpoint | Copying identity | Same-reference identity |
+|---|---|---|
+| Video detail | [existing](Bilibili.gRPC.Diagnostic.Detail.Identity.sgmodule) | [new](Bilibili.gRPC.Diagnostic.Detail.SameReference.sgmodule) |
+| Comments | [existing](Bilibili.gRPC.Diagnostic.Comments.Identity.sgmodule) | [new](Bilibili.gRPC.Diagnostic.Comments.SameReference.sgmodule) |
+
+The new script returns `$done({body:$response.body})` **without** `new Uint8Array`, cloning, parsing or rewriting. It never modifies the underlying buffer.
+
+- **If SameReference also delays:** JavaScript copying can be ruled out for these tests; the HTTP-response body replacement interface is strongly implicated. Stop rewriting these gRPC response bodies in a production module.
+- **If SameReference is normal:** copying the body or its serialization/cross-context handling is implicated. Further targeted testing is necessary before treating this as a working ad-block fix.
+
+The official Surge documentation distinguishes untouched `$done({})` from body replacement using `$done({body})`: https://manual.nssurge.com/scripting/http-response.html
+
+### Production recommendation
+
+Keep `Bilibili.Helper.Audited.sgmodule` (**Fast**) enabled for splash, search and feed ad filtering. Do **not** enable the Full Experimental module, original Maasea gRPC module, or any gRPC response-modifying diagnostics during normal use if the latency is unacceptable. Header-only script changes cannot remove an ad embedded in the gRPC response; use other supported non-gRPC endpoints only where independently verified. No gRPC in-place edit can be claimed to be delay-free until tested on device.
+
+The diagnostic scripts are not performance benchmarks and have no instrumentation of server/client timing. Confirm the script actually ran in Surge's request detail. Test each module alone and restore Fast-only afterward.
