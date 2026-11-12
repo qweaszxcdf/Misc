@@ -43,3 +43,7 @@ Audit uncovered a bug in our former Nebula support: we matched the GET URL but a
 Upstream also disables GABO and NoHomeAd by default and notes Spotify 9.1.98+ compatibility. We **did not** automatically import its new remote override data or change those settings because of the user's earlier 10-second auto-skip issue and the possibility of unintended player state changes. The upstream new script's bootstrap regex includes POST traffic but the script itself returns unchanged for non-GET requests; this is not equivalent to our existing Bootstrap handling.
 
 Synthetic fixture checks cover direct and wrapped Nebula, Bootstrap, Customize, invalid wire payloads, unexpected methods, and non-200 status. **No live playback has been tested.**
+
+## 2026-11-12 result-driven baseline change
+
+**On-device observation:** Amlabort's upstream `spot-new.module` no longer plays audio ads, while the local account-parity module still did, even after fixing Nebula. Therefore the existing `spotify-proto-account-parity.sgmodule` was aligned directive-for-directive with the upstream release and its script URLs pinned to upstream Git commit `0e03454fe90b00cecccf8586ba8922c640dc4812`. The former custom module was preserved at `spotify-proto-account-parity-legacy.sgmodule`. See [upstream parity notes](Spotify.UpstreamParity.README.md).
