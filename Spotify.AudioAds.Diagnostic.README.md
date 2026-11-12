@@ -30,3 +30,16 @@ Make sure no other Spotify response script wins the same request first, and that
 ## Limits
 
 This module does not grant an actual Premium subscription and does not guarantee removal of server-triggered audio advertisements. Spotify app version, Connect / external playback, cached product state, and changes in advertising paths can affect results. No live playback on the user's device was tested.
+
+## 2026-11-12 upstream 9.1.98 update review
+
+Amlabort released `spot-new.module` on 2026-11-10 and updated it 2026-11-11. It references two new scripts:
+
+- `261110-spot.js` for GET `/nebula/v1/configuration/attributes`: treats the result as a **direct AccountAttributesResponse** (map field 1), unlike the previous UcsResponseWrapper.
+- `spot-remote.js` for POST `/remote-config-resolver/v*/configuration`: priority-merges **878 configuration overrides** plus **18 blacklisted keys**. This affects much more than advertising and is **not enabled by default** here.
+
+Audit uncovered a bug in our former Nebula support: we matched the GET URL but attempted to modify only the legacy wrapper's nested `[1,3]` path. A direct attributes response was passed through unchanged. This commit fixes direct map handling while retaining a legacy wrapper fallback. `remoteAds=1` continues to apply only on Bootstrap/Customize configuration payloads, not the direct Nebula attributes map.
+
+Upstream also disables GABO and NoHomeAd by default and notes Spotify 9.1.98+ compatibility. We **did not** automatically import its new remote override data or change those settings because of the user's earlier 10-second auto-skip issue and the possibility of unintended player state changes. The upstream new script's bootstrap regex includes POST traffic but the script itself returns unchanged for non-GET requests; this is not equivalent to our existing Bootstrap handling.
+
+Synthetic fixture checks cover direct and wrapped Nebula, Bootstrap, Customize, invalid wire payloads, unexpected methods, and non-200 status. **No live playback has been tested.**

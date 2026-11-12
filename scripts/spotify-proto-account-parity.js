@@ -52,9 +52,9 @@ const AD_SWITCHES = Object.freeze({
    if(SETTINGS.simulatePremium) for(let k=1;k<=100;k++)removeKeys.add('is-premium-eligible-v'+k);
   }
   if(!Object.keys(desired).length && !removeKeys.size && !SETTINGS.modifyRemoteAdFlags){$done({});return;}
-  const account=(Object.keys(desired).length||removeKeys.size) ? patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired,removeKeys) : bytes;
+  const account=(Object.keys(desired).length||removeKeys.size) ? (nebula ? patchNebulaAttributes(bytes,desired,removeKeys) : patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired,removeKeys)) : bytes;
   if(account===null) return $done({});
-  const result=SETTINGS.modifyRemoteAdFlags ? patchConfiguration(account,bootstrap?[2,1,1,1,1,1]:[1,1,1]) : account;
+  const result=SETTINGS.modifyRemoteAdFlags && !nebula ? patchConfiguration(account,bootstrap?[2,1,1,1,1,1]:[1,1,1]) : account;
   if(TRACE)console.log('[Spotify parity] endpoint='+ (bootstrap?'bootstrap':customize?'customize':'nebula')+' accountPatched='+String(account!==bytes)+' remoteMatches='+METRICS.remoteMatches+' bodyBytes='+String(bytes.length));
   $done(result===null?{}:{body:result});
  }catch(e){console.log('Spotify Proto passthrough: '+String(e).slice(0,120));$done({});}
@@ -110,6 +110,25 @@ function patchAttributes(src,desired,removeKeys){
  const extra=Object.keys(desired).filter(x=>!seen.has(x)).map(key=>message(1,cat([message(1,bytes(key)),message(2,encodeValue(new Uint8Array(),desired[key]))])));
  return splice(src,f,rep,extra);
 }
+
+// Nebula v1 GET returns AccountAttributesResponse directly (not UcsResponseWrapper).
+// First validate a real string-key/value attribute-map field; otherwise fail open.
+// Maintain a fallback for older wrapped payloads seen by earlier clients.
+function patchNebulaAttributes(src,desired,removeKeys){
+ const ff=fields(src);
+ let direct=false;
+ for(const x of ff){
+  if(x.id!==1||x.wire!==2)continue;
+  const entry=src.subarray(x.ds,x.end);
+  const key=keyOf(entry);
+  if(key===null)continue;
+  const hasAttr=fields(entry).some(v=>v.id===2&&v.wire===2);
+  if(hasAttr){direct=true;break;}
+ }
+ if(direct)return patchAttributes(src,desired,removeKeys);
+ return patchPath(src,[1,3],desired,removeKeys);
+}
+
 function patchPath(src,path,desired,removeKeys){
  if(!path.length)return patchAttributes(src,desired,removeKeys);
  const f=fields(src),replacements=[];
