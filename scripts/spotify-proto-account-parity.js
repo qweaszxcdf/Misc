@@ -6,6 +6,8 @@ if (typeof $argument === 'string') {
   if (eq > 0) ARGUMENTS[item.slice(0,eq).trim()] = item.slice(eq+1).trim();
  }
 }
+const TRACE=ARGUMENTS.debug==='1';
+const METRICS={remoteMatches:0};
 const SETTINGS={
  simulatePremium: ARGUMENTS.premium !== '0',
  suppressAdFlags: ARGUMENTS.accountAds !== '0',
@@ -26,9 +28,9 @@ const AD_SWITCHES = Object.freeze({
 
 (function(){
  try {
-  if(!$request||!$response||$request.method!=='POST'||Number($response.status)!==200){$done({});return;}
-  const url=$request.url||'',bootstrap=/\/bootstrap\/v1\/bootstrap(?:\?.*)?$/.test(url),customize=/\/user-customization-service\/v1\/customize(?:\?.*)?$/.test(url);
-  if(!bootstrap&&!customize){$done({});return;}
+  if(!$request||!$response||Number($response.status)!==200){$done({});return;}
+  const url=$request.url||'',bootstrap=/\/bootstrap\/v1\/bootstrap(?:\?.*)?$/.test(url),customize=/\/user-customization-service\/v1\/customize(?:\?.*)?$/.test(url),nebula=/\/nebula\/v1\/configuration\/attributes(?:\?.*)?$/.test(url);
+  if(!((bootstrap||customize)&&$request.method==='POST'||nebula&&$request.method==='GET')){$done({});return;}
   const bytes=$response.body;
   if(!(bytes instanceof Uint8Array)||!bytes.length){$done({});return;}
   const desired=Object.create(null);
@@ -53,6 +55,7 @@ const AD_SWITCHES = Object.freeze({
   const account=(Object.keys(desired).length||removeKeys.size) ? patchPath(bytes,bootstrap?[2,1,1,1,3]:[1,3],desired,removeKeys) : bytes;
   if(account===null) return $done({});
   const result=SETTINGS.modifyRemoteAdFlags ? patchConfiguration(account,bootstrap?[2,1,1,1,1,1]:[1,1,1]) : account;
+  if(TRACE)console.log('[Spotify parity] endpoint='+ (bootstrap?'bootstrap':customize?'customize':'nebula')+' accountPatched='+String(account!==bytes)+' remoteMatches='+METRICS.remoteMatches+' bodyBytes='+String(bytes.length));
   $done(result===null?{}:{body:result});
  }catch(e){console.log('Spotify Proto passthrough: '+String(e).slice(0,120));$done({});}
 })();
@@ -134,6 +137,7 @@ function patchAssignment(raw) {
  const bool=ff.find(x=>x.id===3&&x.wire===2);
  // Never convert a non-bool configuration; preserve all unknown fields.
  if(!bool)return null;
+ METRICS.remoteMatches++;
  const inner=raw.subarray(bool.ds,bool.end),iv=fields(inner);
  const valueField=iv.filter(x=>x.id===1&&x.wire===0);
  const replacement=cat([vi(8),vi(AD_SWITCHES[k]?1:0)]);
